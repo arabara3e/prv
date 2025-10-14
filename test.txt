@@ -1,0 +1,31 @@
+**📩 Objet : Bilan MEP du 14/10 – Évolutions et bénéfices métiers**
+
+Bonjour à tous,
+
+Une **mise en production** a été réalisée **lundi 13 octobre** avec **succès** ✅
+Tous les traitements se sont bien déroulés, sans incident.
+
+---
+
+### ⚙️ Évolutions déployées
+
+| **Évolution**                                             | **Description**                                    | **Bénéfice métier**                                                                              |
+| --------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **API CIB – Passage V1 → V2**                             | Modernisation du connecteur entre les applications | Meilleure fiabilité des échanges de données et plus grande souplesse pour les futures évolutions |
+| **Migration EXACC – Phase 1/2**                           | Montée de version du pilote de base de données     | Meilleure stabilité et préparation de la correction des blocages (“fiegages”)                    |
+| **Montée de version des images (09/2025)**                | Mise à jour du socle technique                     | Sécurité renforcée et compatibilité avec les composants Cloud récents                            |
+| **Mise à jour des tables Secteurs / Activités sensibles** | Actualisation du référentiel d’activités           | Données plus fiables et cohérence avec les classifications réglementaires                        |
+| **Alimentation du Fichier Extract Individus**             | Amélioration du flux d’extraction                  | Qualité et complétude renforcées des données pour les analyses métiers                           |
+
+---
+
+### 🔜 Prochaine étape
+
+➡️ **Migration EXACC – Phase 2/2 prévue demain**, pour finaliser la montée de version et **corriger définitivement les ralentissements** observés.
+
+Merci à tous pour votre collaboration et votre soutien dans ces évolutions.
+
+Bien à vous,
+**Youssef DJEBLI**
+
+ 
