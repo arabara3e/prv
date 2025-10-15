@@ -1,163 +1,86 @@
-Excellent 👌 — c’est exactement le bon point à clarifier.
+Tu as cette erreur parce que data.message.keyword n’existe pas dans ton mapping (pas de sous-champ keyword). Du coup doc['data.message.keyword'] est introuvable.
+La solution est de lire le texte depuis _source puis d’émettre la valeur avec emit().
 
-➡️ Donc dans ton cas, le champ data.message contient un texte brut du style :
+✅ Script runtime qui marche sans .keyword
 
-PMs lues : 144678 | PMs non concernées : 144574 | PMs concernées : 304 | PMs en anomalies : 0
+Type du runtime field : Long (ou Number)
 
-et tu veux extraire la valeur numérique “144678” (ou d’autres nombres selon la métrique) pour l’afficher automatiquement dans ton dashboard Kibana.
+Set value : ON
 
-Parfaitement faisable 💪
-Voici comment procéder pas à pas ⬇️
-
-
----
-
-🧠 Objectif
-
-Créer des champs calculés (Runtime fields) dans Kibana pour isoler ces valeurs :
-
-PMs_lues
-
-PMs_concernees
-
-PMs_non_concernees
-
-PMs_anomalies
+Script :
 
 
-Tu pourras ensuite les utiliser comme de vrais champs numériques dans les visualisations (métriques, courbes, etc.).
+// Lire le message depuis _source (plusieurs structures possibles)
+String msg = null;
 
+if (params._source != null) {
+  def src = params._source;
 
----
+  // Cas 1: objet imbriqué { "data": { "message": "..." } }
+  if (src.containsKey('data') && src.data != null && src.data instanceof Map && src.data.containsKey('message')) {
+    msg = src.data.message;
+  }
 
-⚙️ Étape 1 — Ouvrir la gestion du schéma
+  // Cas 2: champ aplati "data.message" (flattened)
+  if (msg == null && src.containsKey('data.message')) {
+    msg = src['data.message'];
+  }
 
-1. Va dans Stack Management → Data Views (ou Index Patterns)
-
-
-2. Sélectionne ton data view (ex. AP11382 ou celui que tu utilises dans Discover)
-
-
-3. Clique sur Add field
-
-
-
-
----
-
-🧩 Étape 2 — Créer le champ “PMs lues”
-
-1. Nom : pms_lues
-
-
-2. Type : Number
-
-
-3. Script (langage Painless) :
-
-if (doc['data.message.keyword'].size() > 0) {
-  def msg = doc['data.message.keyword'].value;
-  def m = /PMs lues\s*:\s*(\d+)/.matcher(msg);
-  if (m.find()) return Integer.parseInt(m.group(1));
+  // Cas 3: message au premier niveau (au cas où)
+  if (msg == null && src.containsKey('message')) {
+    msg = src.message;
+  }
 }
-return null;
 
-
-4. Clique sur Save field
-
-
-
-
----
-
-🧩 Étape 3 — Répéter pour les autres valeurs
-
-▶️ PMs concernées :
-
-if (doc['data.message.keyword'].size() > 0) {
-  def msg = doc['data.message.keyword'].value;
-  def m = /PMs concernées\s*:\s*(\d+)/.matcher(msg);
-  if (m.find()) return Integer.parseInt(m.group(1));
+// Extraire "PMs lues : <nombre>" et l'émettre
+if (msg != null) {
+  def m = /PMs lues\s*:\s*([0-9]+)/.matcher(msg);
+  if (m.find()) {
+    emit(Long.parseLong(m.group(1)));
+  }
 }
-return null;
 
-▶️ PMs non concernées :
+> Pour les autres métriques, ne change que la regex :
 
-if (doc['data.message.keyword'].size() > 0) {
-  def msg = doc['data.message.keyword'].value;
-  def m = /PMs non concernées\s*:\s*(\d+)/.matcher(msg);
-  if (m.find()) return Integer.parseInt(m.group(1));
+PMs concernées\s*:\s*([0-9]+)
+
+PMs non concernées\s*:\s*([0-9]+)
+
+PMs en anomalies\s*:\s*([0-9]+)
+
+
+
+
+🧪 Astuce debug (si ça échoue encore)
+
+1. Crée temporairement un runtime field Type = keyword nommé debug_msg avec :
+
+
+
+String msg = null;
+if (params._source != null) {
+  def src = params._source;
+  if (src.containsKey('data') && src.data instanceof Map && src.data.containsKey('message')) msg = src.data.message;
+  else if (src.containsKey('data.message')) msg = src['data.message'];
+  else if (src.containsKey('message')) msg = src.message;
 }
-return null;
+if (msg != null) emit(msg);
 
-▶️ PMs en anomalies :
-
-if (doc['data.message.keyword'].size() > 0) {
-  def msg = doc['data.message.keyword'].value;
-  def m = /PMs en anomalies\s*:\s*(\d+)/.matcher(msg);
-  if (m.find()) return Integer.parseInt(m.group(1));
-}
-return null;
+2. Va dans Discover et ajoute debug_msg pour voir exactement le contenu réel.
 
 
----
-
-🧮 Étape 4 — Vérification dans Discover
-
-1. Retourne dans Discover
-
-
-2. Rafraîchis ton data view (en haut à droite → “Refresh fields”)
-
-
-3. Ajoute les nouvelles colonnes :
-pms_lues, pms_concernees, etc.
-
-
-4. Tu devrais maintenant voir les valeurs numériques extraites à partir du texte.
+3. Ajuste ensuite la regex si nécessaire.
 
 
 
+⚠️ À éviter
 
----
+doc['data.message'] sur un champ text → fielddata disabled.
 
-📊 Étape 5 — Créer une visualisation simple
+doc['data.message.keyword'] si le sous-champ n’existe pas → No field found.
 
-1. Va dans Visualize → Create visualization → Metric
-
-
-2. Metric → Aggregation = Max(pms_lues) ou Last value(pms_lues)
-(selon la version de Kibana)
+return au lieu de emit() → cast [int] to [void].
 
 
-3. Filtre optionnel :
-
-data.message:"PMs lues"
-
-
-4. Sauvegarde et ajoute au Dashboard.
-
-
-
-
----
-
-🎯 Résultat
-
-Tu obtiens automatiquement :
-
-“PMs lues : 144 678”
-
-“PMs concernées : 304”
-
-“PMs anomalies : 0”
-
-
-et ça se mettra à jour à chaque exécution du job ou à chaque log reçu.
-
-
----
-
-Souhaites-tu que je te crée le script complet avec les 4 champs prêts à copier-coller (au format JSON Kibana pour ajout direct dans l’Index Pattern) ?
-👉 Comme ça tu pourras tout importer d’un coup sans le faire à la main.
+Une fois pms_lues OK, crée pms_concernees, pms_non_concernees, pms_anomalies, puis fais une viz Metric avec Max() (ou “Last value”) pour chaque tuile du dashboard.
 
