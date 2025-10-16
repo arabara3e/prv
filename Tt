@@ -1,86 +1,105 @@
-Tu as cette erreur parce que data.message.keyword n’existe pas dans ton mapping (pas de sous-champ keyword). Du coup doc['data.message.keyword'] est introuvable.
-La solution est de lire le texte depuis _source puis d’émettre la valeur avec emit().
+Parfait Youssef 🙌 — là c’est le point clé qu’il nous manquait !
+Sur ta capture, on voit que ton champ data.message contient des logs complets comme :
 
-✅ Script runtime qui marche sans .keyword
+Job: [SimpleJob: [name=RestituerKofFoncAssociationsJob]] completed with the following parameters:
+...
+Nombre de rejets fonctionnels extraits sur 30 jours glissants : 3
 
-Type du runtime field : Long (ou Number)
+Donc ✅ tu as bien un champ data.message au format texte brut (string), sans sous-champ .keyword.
+➡️ On va donc lire directement depuis _source et extraire les nombres qui t’intéressent (par ex. "Nombre de rejets fonctionnels extraits…").
+
+
+---
+
+🎯 Exemple 1 : extraction du nombre de rejets
+
+Tu veux sans doute isoler le 3 de la ligne :
+
+Nombre de rejets fonctionnels extraits sur 30 jours glissants : 3
+
+Voici le script exact à mettre dans ton Runtime Field :
+
+🧩 Runtime Field : nombre_rejets_fonctionnels
+
+Type : Long
 
 Set value : ON
 
 Script :
 
 
-// Lire le message depuis _source (plusieurs structures possibles)
 String msg = null;
 
+// Récupération sûre depuis _source
 if (params._source != null) {
   def src = params._source;
-
-  // Cas 1: objet imbriqué { "data": { "message": "..." } }
-  if (src.containsKey('data') && src.data != null && src.data instanceof Map && src.data.containsKey('message')) {
+  if (src.containsKey('data') && src.data instanceof Map && src.data.containsKey('message')) {
     msg = src.data.message;
-  }
-
-  // Cas 2: champ aplati "data.message" (flattened)
-  if (msg == null && src.containsKey('data.message')) {
+  } else if (src.containsKey('data.message')) {
     msg = src['data.message'];
-  }
-
-  // Cas 3: message au premier niveau (au cas où)
-  if (msg == null && src.containsKey('message')) {
+  } else if (src.containsKey('message')) {
     msg = src.message;
   }
 }
 
-// Extraire "PMs lues : <nombre>" et l'émettre
+// Extraction : "Nombre de rejets fonctionnels extraits ... : <n>"
 if (msg != null) {
-  def m = /PMs lues\s*:\s*([0-9]+)/.matcher(msg);
+  def m = /Nombre de rejets fonctionnels extraits[^:]*:\s*([0-9]+)/.matcher(msg);
   if (m.find()) {
     emit(Long.parseLong(m.group(1)));
   }
 }
 
-> Pour les autres métriques, ne change que la regex :
+✅ Résultat attendu :
 
-PMs concernées\s*:\s*([0-9]+)
-
-PMs non concernées\s*:\s*([0-9]+)
-
-PMs en anomalies\s*:\s*([0-9]+)
+Pour le message ci-dessus, ton champ nombre_rejets_fonctionnels affichera 3 dans Discover.
 
 
 
+---
 
-🧪 Astuce debug (si ça échoue encore)
+🧠 Si tu veux extraire d’autres infos numériques
 
-1. Crée temporairement un runtime field Type = keyword nommé debug_msg avec :
+Tu peux dupliquer le champ et simplement adapter la regex :
 
+🔹 Exemple pour “Total time take in millis : 1111”
 
-
-String msg = null;
-if (params._source != null) {
-  def src = params._source;
-  if (src.containsKey('data') && src.data instanceof Map && src.data.containsKey('message')) msg = src.data.message;
-  else if (src.containsKey('data.message')) msg = src['data.message'];
-  else if (src.containsKey('message')) msg = src.message;
+def msg = params._source?.data?.message ?? params._source['data.message'];
+if (msg != null) {
+  def m = /Total time take in millis\s*:\s*([0-9]+)/.matcher(msg);
+  if (m.find()) emit(Long.parseLong(m.group(1)));
 }
-if (msg != null) emit(msg);
 
-2. Va dans Discover et ajoute debug_msg pour voir exactement le contenu réel.
+🔹 Exemple pour “PMs lues : 144678”
 
-
-3. Ajuste ensuite la regex si nécessaire.
-
-
-
-⚠️ À éviter
-
-doc['data.message'] sur un champ text → fielddata disabled.
-
-doc['data.message.keyword'] si le sous-champ n’existe pas → No field found.
-
-return au lieu de emit() → cast [int] to [void].
+def msg = params._source?.data?.message ?? params._source['data.message'];
+if (msg != null) {
+  def m = /PMs lues\s*:\s*([0-9]+)/.matcher(msg);
+  if (m.find()) emit(Long.parseLong(m.group(1)));
+}
 
 
-Une fois pms_lues OK, crée pms_concernees, pms_non_concernees, pms_anomalies, puis fais une viz Metric avec Max() (ou “Last value”) pour chaque tuile du dashboard.
+---
+
+✅ Étapes après création :
+
+1. Clique sur Save dans le Runtime Field.
+
+
+2. Retourne dans Discover, clique sur Refresh Fields.
+
+
+3. Ajoute nombre_rejets_fonctionnels comme colonne → tu devrais voir le nombre apparaître sur les logs contenant la phrase correspondante.
+
+
+4. Une fois validé → crée une visualisation “Metric” → Max(nombre_rejets_fonctionnels) pour ton dashboard.
+
+
+
+
+---
+
+Si tu veux, envoie-moi un exemple complet d’un message typique data.message (copie texte, pas capture),
+et je te fournis les 4 scripts (PMs lues, Associations lues, Documents lus, Rejets fonctionnels) tout prêts à copier-coller.
+Ça t’évitera d’ajuster les regex à la main.
 
