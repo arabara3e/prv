@@ -1,105 +1,21 @@
-Parfait Youssef 🙌 — là c’est le point clé qu’il nous manquait !
-Sur ta capture, on voit que ton champ data.message contient des logs complets comme :
+// Lecture du message, quelle que soit la structure du document
+def msg = null;
 
-Job: [SimpleJob: [name=RestituerKofFoncAssociationsJob]] completed with the following parameters:
-...
-Nombre de rejets fonctionnels extraits sur 30 jours glissants : 3
-
-Donc ✅ tu as bien un champ data.message au format texte brut (string), sans sous-champ .keyword.
-➡️ On va donc lire directement depuis _source et extraire les nombres qui t’intéressent (par ex. "Nombre de rejets fonctionnels extraits…").
-
-
----
-
-🎯 Exemple 1 : extraction du nombre de rejets
-
-Tu veux sans doute isoler le 3 de la ligne :
-
-Nombre de rejets fonctionnels extraits sur 30 jours glissants : 3
-
-Voici le script exact à mettre dans ton Runtime Field :
-
-🧩 Runtime Field : nombre_rejets_fonctionnels
-
-Type : Long
-
-Set value : ON
-
-Script :
-
-
-String msg = null;
-
-// Récupération sûre depuis _source
 if (params._source != null) {
-  def src = params._source;
-  if (src.containsKey('data') && src.data instanceof Map && src.data.containsKey('message')) {
-    msg = src.data.message;
-  } else if (src.containsKey('data.message')) {
-    msg = src['data.message'];
-  } else if (src.containsKey('message')) {
-    msg = src.message;
+  // Cas 1 : structure imbriquée { "data": { "message": "..." } }
+  if (params._source.containsKey('data') && params._source.data instanceof Map && params._source.data.containsKey('message')) {
+    msg = params._source.data.message;
+  }
+  // Cas 2 : champ aplati "data.message"
+  else if (params._source.containsKey('data.message')) {
+    msg = params._source['data.message'];
   }
 }
 
-// Extraction : "Nombre de rejets fonctionnels extraits ... : <n>"
+// Extraction de la valeur numérique après "PMs lues :"
 if (msg != null) {
-  def m = /Nombre de rejets fonctionnels extraits[^:]*:\s*([0-9]+)/.matcher(msg);
+  def m = /PMs lues\s*:\s*([0-9]+)/.matcher(msg);
   if (m.find()) {
     emit(Long.parseLong(m.group(1)));
   }
 }
-
-✅ Résultat attendu :
-
-Pour le message ci-dessus, ton champ nombre_rejets_fonctionnels affichera 3 dans Discover.
-
-
-
----
-
-🧠 Si tu veux extraire d’autres infos numériques
-
-Tu peux dupliquer le champ et simplement adapter la regex :
-
-🔹 Exemple pour “Total time take in millis : 1111”
-
-def msg = params._source?.data?.message ?? params._source['data.message'];
-if (msg != null) {
-  def m = /Total time take in millis\s*:\s*([0-9]+)/.matcher(msg);
-  if (m.find()) emit(Long.parseLong(m.group(1)));
-}
-
-🔹 Exemple pour “PMs lues : 144678”
-
-def msg = params._source?.data?.message ?? params._source['data.message'];
-if (msg != null) {
-  def m = /PMs lues\s*:\s*([0-9]+)/.matcher(msg);
-  if (m.find()) emit(Long.parseLong(m.group(1)));
-}
-
-
----
-
-✅ Étapes après création :
-
-1. Clique sur Save dans le Runtime Field.
-
-
-2. Retourne dans Discover, clique sur Refresh Fields.
-
-
-3. Ajoute nombre_rejets_fonctionnels comme colonne → tu devrais voir le nombre apparaître sur les logs contenant la phrase correspondante.
-
-
-4. Une fois validé → crée une visualisation “Metric” → Max(nombre_rejets_fonctionnels) pour ton dashboard.
-
-
-
-
----
-
-Si tu veux, envoie-moi un exemple complet d’un message typique data.message (copie texte, pas capture),
-et je te fournis les 4 scripts (PMs lues, Associations lues, Documents lus, Rejets fonctionnels) tout prêts à copier-coller.
-Ça t’évitera d’ajuster les regex à la main.
-
