@@ -1,21 +1,173 @@
-// Lecture du message, quelle que soit la structure du document
-def msg = null;
+Parfait Youssef 👌
+Tu vas présenter uniquement ce slide en réunion de scoring.
+Il est dense, donc ton objectif est de :
+✅ simplifier la lecture,
+✅ guider l’audience,
+✅ montrer la logique de bout en bout,
+✅ éviter l’effet “je lis le schéma”.
 
-if (params._source != null) {
-  // Cas 1 : structure imbriquée { "data": { "message": "..." } }
-  if (params._source.containsKey('data') && params._source.data instanceof Map && params._source.data.containsKey('message')) {
-    msg = params._source.data.message;
-  }
-  // Cas 2 : champ aplati "data.message"
-  else if (params._source.containsKey('data.message')) {
-    msg = params._source['data.message'];
-  }
-}
+Je te prépare un speech clair, structuré, pro, que tu peux lire à l’oral.
 
-// Extraction de la valeur numérique après "PMs lues :"
-if (msg != null) {
-  def m = /PMs lues\s*:\s*([0-9]+)/.matcher(msg);
-  if (m.find()) {
-    emit(Long.parseLong(m.group(1)));
-  }
-}
+
+---
+
+🎤 Speech pour expliquer la slide de scoring
+
+> Bonjour à tous,
+je vais vous présenter la vision d’architecture autour du scoring et du traitement des alertes débiteurs Pro.
+
+Pour faciliter la lecture, je vous propose de parcourir le schéma de gauche à droite, en suivant le chemin de la donnée.
+
+
+
+
+---
+
+1️⃣ Côté gauche — Les sources & communications clients
+
+> À gauche, on retrouve les sources d’information client et les canaux de communication :
+
+Emails, SMS, courriers
+
+Notifications digitaux type Digicom / Push / Mail
+
+Sollicitations entrantes via les outils métier
+
+
+Ce sont les points d’entrée qui remontent des événements ou informations pouvant déclencher des alertes.
+
+
+
+
+---
+
+2️⃣ Zone centrale gauche — Données métier & événements
+
+> Ensuite, juste à droite, on voit les systèmes et flux métier critiques :
+
+DECILC / CVR22 / SCIP / SGI / RMCT
+
+Flux de gestion des incidents ou événements client
+
+
+Ces systèmes alimentent le moteur de scoring avec des données factuelles et comportementales sur les clients.
+
+
+
+
+---
+
+3️⃣ Centre du schéma — Le cœur : moteur & base cible
+
+> Au centre, on retrouve le moteur de scoring couplé à la base de données pivot (BDD).
+
+C’est ici que se jouent les étapes clés :
+
+Consolidation des données provenant des sources
+
+Application des règles de scoring et détection d’alertes
+
+Création et mise à jour des statuts d’alertes
+
+
+En résumé : c’est l’usine à scoring + stockage unique pour garantir cohérence et traçabilité.
+
+
+
+
+---
+
+4️⃣ Bas — Interfaces utilisateurs et workflows
+
+> En bas du schéma, on voit la partie expérience conseil :
+
+MonClient et les écrans conseillers
+
+Workflow intégré
+
+Vision client enrichie
+
+
+C’est ici que l’utilisateur final consulte, traite et suit les alertes, avec des :
+
+actions disponibles,
+
+visas si nécessaire,
+
+historique de décisions.
+
+
+
+
+
+---
+
+5️⃣ Droite — Flux retour, pilotage & supervision
+
+> Enfin, à droite, on retrouve :
+
+les outils de pilotage et supervision (tableaux de bord, suivi qualité)
+
+les flux retour vers les applications d’origine
+
+
+Cela permet d'assurer :
+
+une cohérence des données dans tout le SI
+
+un suivi des indicateurs
+
+un contrôle continu du dispositif
+
+
+
+
+
+---
+
+✅ Conclusion synthétique
+
+> En résumé, cette architecture permet :
+
+de centraliser la logique de scoring,
+
+de fiabiliser le cycle de vie des alertes,
+
+d’offrir une vision homogène et pilotable aux conseillers,
+
+tout en restant alignée avec les standards architecture et urbanisation Groupe.
+
+
+
+
+> L’idée aujourd’hui est d’aligner cette trajectoire et identifier vos retours éventuels sur la structuration des flux et la place du moteur dans l’urbanisation globale.
+
+
+
+
+---
+
+🎯 Petite phrase finale d’ouverture
+
+> Je suis bien sûr ouvert à vos retours ou questions, notamment sur le positionnement du moteur, les échanges entre briques et les mécanismes de supervision/scoring.
+
+
+
+
+---
+
+🧠 Astuce pendant la présentation
+
+Pendant que tu parles :
+
+Déplace doucement ton curseur dans la direction dont tu parles (gauche ➜ centre ➜ bas ➜ droite)
+
+Ne lis pas les blocs, tu racontes “l’histoire du flux”
+
+Marque des mini-pauses entre les étapes
+
+
+Ça donne un effet architecte maîtrisé 🧠🏛️
+
+
+---
