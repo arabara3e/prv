@@ -1,0 +1,76 @@
+classDiagram
+  class BcefParcoursDebiteur {
+    +dossierId
+    +referenceParcours
+    +statut
+    +phaseCourante
+    +scoreRisque
+    +correlationId
+    +derniereMaj
+  }
+  note for BcefParcoursDebiteur "Noyau du domaine: point unique de verite sur le dossier debiteur (etat, donnees, liens)."
+
+  class Identifiants { +clientId +personId +codeAgence +codeEntite }
+  note for Identifiants "Rattachement referentiels BCEF: client, personne, agence, entite."
+
+  class ScoreRisque { +global +comportemental +bancaire +bcefSourceVersion }
+  note for ScoreRisque "Synthese analytique DataHub pour prioriser et calibrer les decisions."
+
+  class EvenementRemarkable { +type_ER_ou_CAP +sourceSysteme +idBcefEvent +detecteLe }
+  note for EvenementRemarkable "Declencheur metier (ER/CAP) issu des flux amont."
+
+  class Alerte { +code +libelle +gravite +statut +codeFamille +niveauOrigine }
+  note for Alerte "Signal metier normalise BCEF: ce qui doit attirer l attention et etre traite."
+
+  class Preconisation { +actionProposee +statut_PROPOSEE_ACCEPTEE_REFUSEE_REDIRIGEE +justificationRefus +proposeeAu }
+  note for Preconisation "Proposition d action issue des alertes; suit un cycle de vie accepte/refuse/redirige."
+
+  class Decision { +typeDecision +issue +rationale +priseLe }
+  note for Decision "Acte valide (auto ou humain) avec justification; base pour l audit et le suivi."
+
+  class Notification { +canal +destinataire +messageType +statut_EMISE_LUE_SIGNEE }
+  note for Notification "Communication vers client/acteurs internes; trace l etat d envoi/lecture."
+
+  class Visa { +acteur_CAP_DIA_DIT_RPRO_BO +typeVisa +statut +date }
+  note for Visa "Gouvernance: validation/contre-visa par acteur habilite (conformite)."
+
+  class WorkflowRef { +code +libelle +systemeCible +url }
+  note for WorkflowRef "Pointeur metier vers un workflow externe cible (sans details techniques)."
+
+  class MouvementCompte { +nature +montant +dateValeur }
+  note for MouvementCompte "Faits bancaires sources (impaye, virement, frais) support d analyse."
+
+  class Observation { +auteur +texte +date }
+  note for Observation "Historique libre metier: commentaires et traces d echanges."
+
+  class Provenance { +sourceSysteme +champSource +aReprendre +aStocker +lotId }
+  note for Provenance "Trajectoire des donnees champ-a-champ: origine et decisions de reprise/stockage."
+
+  class HistoriqueEvenement { +objetType +objetId +action +valeurAvant +valeurApres +horodatage +acteur }
+  note for HistoriqueEvenement "Journal complet pour reconstitution du parcours et audit sur la periode."
+
+  %% Agrégat pivot
+  BcefParcoursDebiteur --> Identifiants : 1
+  BcefParcoursDebiteur --> ScoreRisque : 1
+  BcefParcoursDebiteur --> EvenementRemarkable : 0..*
+  BcefParcoursDebiteur --> Alerte : 0..*
+  BcefParcoursDebiteur --> Preconisation : 0..*
+  BcefParcoursDebiteur --> Decision : 0..*
+  BcefParcoursDebiteur --> Notification : 0..*
+  BcefParcoursDebiteur --> Visa : 0..*
+  BcefParcoursDebiteur --> MouvementCompte : 0..*
+  BcefParcoursDebiteur --> Observation : 0..*
+  BcefParcoursDebiteur --> HistoriqueEvenement : 0..*
+
+  %% Provenance obligatoire sur flux de donnees
+  Alerte --> Provenance : 1
+  MouvementCompte --> Provenance : 1
+  EvenementRemarkable --> Provenance : 1
+
+  %% Lien fonctionnel interne
+  Preconisation --> Alerte : 1..* baseAlertes
+  Preconisation --> WorkflowRef : 0..1 redirigeVers
+  Notification --> Preconisation : 0..1 concerne
+  Notification --> Alerte : 0..1 concerne
+  Visa --> Preconisation : 0..1 sur
+  Visa --> BcefParcoursDebiteur : 0..1 sur
