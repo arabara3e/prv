@@ -1,0 +1,68 @@
+flowchart LR
+%% ==== Systemes amont BCEF ====
+subgraph AMONT[Systemes amont BCEF]
+  DH[DataHub - ETL ER / CAP]
+  SRC[SCIP - SAFARI - DEClic - donnees clients]
+end
+AM_NOTE[Note: Fournit les donnees analytiques et les evenements remarquables qui declenchent un dossier debiteur]
+AM_NOTE -.-> AMONT
+
+%% ==== Application Parcours Debiteur ====
+subgraph PD[Application Parcours Debiteur]
+  CORE[BcefParcoursDebiteur - objet noyau]
+  ER[Evenement remarquable]
+  AL[Alerte]
+  PR[Preconisation]
+  DE[Decision]
+  NO[Notification]
+  VI[Visa]
+  HI[Historique 6 mois]
+
+  CORE --> ER
+  CORE --> AL
+  CORE --> PR
+  CORE --> DE
+  CORE --> NO
+  CORE --> VI
+  CORE --> HI
+
+  ER --> AL --> PR --> DE
+  AL --> HI
+  PR --> HI
+  DE --> HI
+  VI --> HI
+end
+PD_NOTE[Note: Coeur metier. Centralise alertes, preconisations, decisions, visas, notifications et audit 6 mois]
+PD_NOTE -.-> CORE
+
+%% ==== Camunda BPM ====
+subgraph CAM[Camunda BPM - orchestration externe]
+  WFI[Instance de processus]
+  TASK[Taches humaines CAP / DIA / DIT / BO]
+  WFI --> TASK
+end
+CAM_NOTE[Note: Orchestration BPMN, affectation des taches, callbacks vers l application Parcours Debiteur]
+CAM_NOTE -.-> CAM
+
+%% ==== Canaux aval ====
+subgraph AVAL[Applications metiers et canaux aval]
+  CAPAPP[Application CAP]
+  DIAAPP[Applications DIA / DIT / BO]
+  CLI[MonClient - Espace client]
+end
+AVAL_NOTE[Note: Restitution des decisions, validations et notifications client]
+AVAL_NOTE -.-> AVAL
+
+%% ==== Flux inter-systemes ====
+DH -->|Evenements ER / CAP| PD
+SRC -->|Donnees clients et comptes| PD
+PD -->|Demarrage / mise a jour processus| WFI
+TASK -->|Retour decision / validation| PD
+PD -->|Preconisations et decisions| CAPAPP
+PD -->|Visas et validations| DIAAPP
+PD -->|Notifications clients| CLI
+PD -->|Resumes execution / audit| DH
+
+%% ==== Style des notes ====
+classDef note fill:#f9f9f9,stroke:#999,stroke-dasharray: 5 5,color:#333,font-size:10px;
+class AM_NOTE,PD_NOTE,CAM_NOTE,AVAL_NOTE note;
